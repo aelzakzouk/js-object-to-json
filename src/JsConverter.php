@@ -84,6 +84,75 @@ class JsConverter
     }
 
     /**
+     * Converts a JavaScript object string to a JSON formatted string.
+     *
+     * @param string $jsObjectString The JavaScript object
+     * @return string
+     */
+    public static function convertToJsonWithComment(string $jsObjectString): string
+    {
+        $replacedStringsList = [];
+
+        // Remove functions from objects
+        $convertedString = self::removeFunctions($convertedString);
+
+        // Replace all delimited string literals with placeholders
+        $convertedString = self::escapeSingleQuoteBetweenDoubleQuotes($convertedString);
+        $convertedString = self::replaceSectionsWithPlaceholders($convertedString, $replacedStringsList, "`");
+        $convertedString = self::replaceSectionsWithPlaceholders($convertedString, $replacedStringsList, "'");
+        self::fixQuoteEscapingForSingleQuoteDelimitedStrings($replacedStringsList);
+        $convertedString = self::unescapeSingleQuoteBetweenDoubleQuotes($convertedString);
+        $convertedString = self::replaceSectionsWithPlaceholders($convertedString, $replacedStringsList, '"');
+
+        // Now is safe to remove all white space
+        $convertedString = preg_replace('/\s+/m', '', $convertedString);
+
+        // And remove all trailing commas in objects
+        $convertedString = str_replace([',}', ',]'], ['}', ']'], $convertedString);
+
+        // Add double quotes for keys
+        $convertedString = preg_replace('/([^{}\[\]#,]+):/', '"$1":', $convertedString);
+
+        // Add double quotes for values
+        $convertedString = preg_replace_callback(
+            '/:([^{}\[\]#,]+)/',
+            static function ($matches) {
+                if (is_numeric($matches[1])) {
+                    return ':' . $matches[1];
+                }
+
+                return ':"' . $matches[1] . '"';
+            },
+            $convertedString
+        );
+
+        // Make sure "true", "false" and "null" values get delimited by double quotes
+        // Need to run the replacement twice, because not all values get replaced if they are adjacent
+        $convertedString = preg_replace('/([^"])(true|false|null)([^"])/', '$1"$2"$3', $convertedString);
+        $convertedString = preg_replace('/([^"])(true|false|null)([^"])/', '$1"$2"$3', $convertedString);
+
+        // Replace the placeholders with the initial strings
+        $deep = false;
+
+        do {
+            $convertedString = preg_replace_callback(
+                '/###(\d+)###/',
+                static function ($matches) use (&$replacedStringsList, $deep) {
+                    $replace = $replacedStringsList[$matches[1]];
+                    unset($replacedStringsList[$matches[1]]);
+                    return ($deep ? "'" . $replace . "'" : '"' . $replace . '"');
+                },
+                $convertedString
+            );
+
+            $deep = true;
+        } while (!empty($replacedStringsList));
+
+        return preg_replace('/:(")(true|false|null)(")/', ':$2', $convertedString);
+    }
+
+
+    /**
      * Convert the given JS object to JSON and json_decode it
      *
      * @param string $input
