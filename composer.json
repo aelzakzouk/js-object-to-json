@@ -1,5 +1,5 @@
 {
-    "name": "ovidigital/js-object-to-json",
+    "name": "aelzakzouk/js-object-to-json",
     "description": "PHP library to convert a JavaScript object string to JSON formatted string",
     "type": "library",
     "license": "MIT",
