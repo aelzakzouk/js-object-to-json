@@ -94,7 +94,7 @@ class JsConverter
         $replacedStringsList = [];
 
         // Remove functions from objects
-        $convertedString = self::removeFunctions($convertedString);
+        $convertedString = self::removeFunctions($jsObjectString);
 
         // Replace all delimited string literals with placeholders
         $convertedString = self::escapeSingleQuoteBetweenDoubleQuotes($convertedString);
